@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LYFA – SOS Acknowledgement</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(160deg, #e8f3ff, #f0f4f8, #e6f9f0);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff; border-radius: 24px; padding: 40px 32px;
+      max-width: 420px; width: 100%;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+      text-align: center;
+    }
+    .logo { font-size: 48px; margin-bottom: 8px; }
+    .brand { font-size: 22px; font-weight: 900; color: #1e293b; margin-bottom: 4px; }
+    .tagline { font-size: 13px; color: #64748b; margin-bottom: 28px; }
+    .alert-box {
+      background: #fff0f0; border: 2px solid rgba(255,90,90,0.25);
+      border-radius: 16px; padding: 20px; margin-bottom: 24px;
+    }
+    .alert-icon { font-size: 40px; margin-bottom: 8px; }
+    .alert-title { font-size: 18px; font-weight: 900; color: #e03030; margin-bottom: 6px; }
+    .alert-msg { font-size: 14px; color: #64748b; line-height: 1.6; }
+    .elder-name { font-weight: 900; color: #1e293b; }
+    .ack-btn {
+      width: 100%; padding: 16px; font-size: 17px; font-weight: 900;
+      background: linear-gradient(135deg, #34c97b, #27ae74);
+      color: #fff; border: none; border-radius: 14px; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(52,201,123,0.4);
+      transition: transform 0.15s;
+      margin-bottom: 12px;
+    }
+    .ack-btn:hover { transform: translateY(-2px); }
+    .ack-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .already-ack {
+      background: #e6f9f0; border: 2px solid rgba(52,201,123,0.3);
+      border-radius: 16px; padding: 24px; margin-bottom: 16px;
+    }
+    .already-ack .icon { font-size: 48px; margin-bottom: 10px; }
+    .already-ack h2 { font-size: 20px; font-weight: 900; color: #1a8a52; margin-bottom: 6px; }
+    .already-ack p { font-size: 14px; color: #64748b; }
+    .loading { font-size: 14px; color: #64748b; padding: 20px; }
+    .error-box { background: #fff0f0; border-radius: 12px; padding: 16px; color: #e03030; font-size: 14px; }
+    .footer { font-size: 12px; color: #94a3b8; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🌸</div>
+    <div class="brand">LYFA</div>
+    <div class="tagline">Wellness Companion</div>
+
+    <div id="content">
+      <div class="loading">⏳ Loading alert details...</div>
+    </div>
+
+    <div class="footer">LYFA – Elderly Wellness Companion</div>
+  </div>
+
+  <!-- Firebase SDK (no bundler needed — CDN) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, getDoc, updateDoc, serverTimestamp }
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // ── Paste your Firebase config here ──────────────────
+    const firebaseConfig = {
+    apiKey: "AIzaSyBryc8hNCyZ8UHB-zmCZN9WoBrZc931zv8",
+    authDomain: "lyfa-3a112.firebaseapp.com",
+    projectId: "lyfa-3a112",
+    storageBucket: "lyfa-3a112.firebasestorage.app",
+    messagingSenderId: "107855977279",
+    appId: "1:107855977279:web:cde7a104798798ed6ad18a"
+  };
+
+    // ─────────────────────────────────────────────────────
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    // Parse URL params
+    const params    = new URLSearchParams(window.location.search);
+    const uid       = params.get("uid");
+    const alertId   = params.get("alertId");
+    const cgName    = params.get("name") || "Caregiver";
+    const content   = document.getElementById("content");
+
+    async function loadAlert() {
+      if (!uid || !alertId) {
+        content.innerHTML = `<div class="error-box">❌ Invalid link. Please check your email again.</div>`;
+        return;
+      }
+
+      try {
+        const ref  = doc(db, "users", uid, "sosAlerts", alertId);
+        const snap = await getDoc(ref);
+
+        if (!snap.exists()) {
+          content.innerHTML = `<div class="error-box">❌ Alert not found. It may have been deleted.</div>`;
+          return;
+        }
+
+        const alert = snap.data();
+        const elderName = alert.userName || "Your loved one";
+        const time = alert.triggeredAt?.toDate
+          ? alert.triggeredAt.toDate().toLocaleString()
+          : "Unknown time";
+
+        if (alert.acknowledged) {
+          // Already acknowledged
+          const ackBy   = alert.acknowledgedBy || "A caregiver";
+          const ackTime = alert.acknowledgedAt?.toDate
+            ? alert.acknowledgedAt.toDate().toLocaleString()
+            : "";
+          content.innerHTML = `
+            <div class="already-ack">
+              <div class="icon">✅</div>
+              <h2>Already Acknowledged</h2>
+              <p>This alert was already confirmed by <strong>${ackBy}</strong>${ackTime ? " at " + ackTime : ""}.</p>
+            </div>`;
+          return;
+        }
+
+        // Show acknowledgement button
+        content.innerHTML = `
+          <div class="alert-box">
+            <div class="alert-icon">🚨</div>
+            <div class="alert-title">Emergency SOS Alert</div>
+            <div class="alert-msg">
+              <span class="elder-name">${elderName}</span> pressed the SOS button and needs help.<br/><br/>
+              <strong>Alert time:</strong> ${time}
+            </div>
+          </div>
+          <button class="ack-btn" id="ackBtn">
+            ✅ I'm On My Way — I've Seen This
+          </button>
+          <p style="font-size:13px;color:#64748b;">Clicking confirms you have seen this emergency alert.</p>`;
+
+        document.getElementById("ackBtn").addEventListener("click", async () => {
+          const btn = document.getElementById("ackBtn");
+          btn.disabled = true;
+          btn.textContent = "Confirming...";
+          try {
+            await updateDoc(ref, {
+              acknowledged:    true,
+              acknowledgedAt:  serverTimestamp(),
+              acknowledgedBy:  cgName,
+            });
+            content.innerHTML = `
+              <div class="already-ack">
+                <div class="icon">✅</div>
+                <h2>Thank You, ${cgName}!</h2>
+                <p>${elderName}'s dashboard will now show that you have seen this alert and are on your way. 💚</p>
+              </div>`;
+          } catch (e) {
+            btn.disabled = false;
+            btn.textContent = "✅ I'm On My Way — I've Seen This";
+            alert("Something went wrong. Please try again.");
+          }
+        });
+
+      } catch (e) {
+        content.innerHTML = `<div class="error-box">❌ Could not load alert. Check your internet connection.</div>`;
+        console.error(e);
+      }
+    }
+
+    loadAlert();
+  </script>
+</body>
+</html>

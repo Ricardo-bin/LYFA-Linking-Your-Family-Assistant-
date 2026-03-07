@@ -1,0 +1,30 @@
+// ============================================================
+//  LYFA – Firestore Security Rules
+//  Paste these into Firebase Console → Firestore → Rules
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Each user can only read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Medications sub-collection
+      match /medications/{medId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // SOS Alerts sub-collection
+      match /sosAlerts/{alertId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
