@@ -8,9 +8,17 @@
     ],
     "rewrites": [
       {
+        "source": "/ack.html",
+        "destination": "/ack.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   }
 }

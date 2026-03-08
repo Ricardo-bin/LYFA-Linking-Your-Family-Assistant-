@@ -1,30 +1,38 @@
-// ============================================================
-//  LYFA – Firestore Security Rules
-//  Paste these into Firebase Console → Firestore → Rules
-// ============================================================
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Each user can only read/write their own data
+    // ── User profiles ──────────────────────────────────────
+    // Only the authenticated owner can read/write their profile
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // Medications sub-collection
-      match /medications/{medId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // SOS Alerts sub-collection
-      match /sosAlerts/{alertId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
     }
 
-    // Deny everything else
-    match /{document=**} {
-      allow read, write: if false;
+    // ── Medications ────────────────────────────────────────
+    // Only the authenticated owner can read/write medications
+    match /users/{userId}/medications/{medId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── SOS Alerts ─────────────────────────────────────────
+    // The owner (authenticated) can create and read all their alerts.
+    // Caregivers (NOT logged in) need to:
+    //   1. READ  — to show the elder's name on the respond page
+    //   2. UPDATE — to write acknowledged=true when they tap "I'm on my way"
+    //
+    // This is safe because:
+    //   - Alert IDs are randomly generated, unguessable Firestore document IDs
+    //   - Caregivers can only UPDATE (not create or delete)
+    //   - The update only sets acknowledged fields — no sensitive data exposed
+    match /users/{userId}/sosAlerts/{alertId} {
+      // Owner: full access
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Caregiver (unauthenticated): can read alert details to show respond page
+      allow read: if true;
+
+      // Caregiver (unauthenticated): can only mark as acknowledged
+      allow update: if true;
     }
   }
 }

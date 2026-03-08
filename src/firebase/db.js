@@ -83,14 +83,16 @@ export function listenMedications(uid, callback) {
  * Log an SOS alert to Firestore
  * Path: users/{uid}/sosAlerts/{auto-id}
  */
-export async function logSOSAlert(uid, userName, caregiverEmail) {
+export async function logSOSAlert(uid, elderName, caregiverEmails) {
   const ref = collection(db, "users", uid, "sosAlerts");
   const docRef = await addDoc(ref, {
-    triggeredAt: serverTimestamp(),
-    userName,
-    caregiverEmail,
-    message: "Emergency SOS triggered. Immediate assistance required.",
-    acknowledged: false,
+    triggeredAt:    serverTimestamp(),
+    elderName,
+    caregiverEmails,
+    message:        "Emergency SOS triggered. Immediate assistance required.",
+    acknowledged:   false,
+    acknowledgedAt: null,
+    acknowledgedBy: null,
   });
   return docRef.id;
 }

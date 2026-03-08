@@ -418,8 +418,7 @@ export default function App() {
     try {
       const caregivers = profile.caregivers || [{ name: profile.caregiverName, email: profile.caregiverEmail, relation: "" }];
       const alertId = await logSOSAlert(firebaseUser.uid, profile.elderName, caregivers.map((c) => c.email).join(", "));
-      const respondUrl = `${window.location.origin}/?respond=true&uid=${firebaseUser.uid}&alertId=${alertId}`;
-      const result = await sendSOSEmail(caregivers, profile.elderName, respondUrl);
+      const result = await sendSOSEmail(caregivers, profile.elderName, firebaseUser.uid, alertId);
       toast("🚨 SOS", result.success ? `Sent to ${result.sent} caregiver(s)!` : "Logged. Check email config.", "sos");
       setSosActivated(true);
       setTimeout(() => setSosActivated(false), 10000);
